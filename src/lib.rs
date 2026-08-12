@@ -107,7 +107,7 @@ pub use crate::curly::SimpleCurlyFormat;
 /// A Position may borrow they key name from the format string.
 ///
 /// [`FormatArgs`]: trait.FormatArgs.html
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Default)]
 pub enum Position<'a> {
     /// The next indexed argument in line.
     ///
@@ -116,6 +116,7 @@ pub enum Position<'a> {
     /// afterwards continue after the last auto argument.
     ///
     /// Requires the argument list to be indexable by numbers.
+    #[default]
     Auto,
 
     /// Index argument at the given offset.
@@ -127,12 +128,6 @@ pub enum Position<'a> {
     ///
     /// Requires the argument list to be indexable by string keys.
     Key(&'a str),
-}
-
-impl Default for Position<'_> {
-    fn default() -> Self {
-        Position::Auto
-    }
 }
 
 impl fmt::Display for Position<'_> {
@@ -196,11 +191,12 @@ impl<'a> Error<'a> {
 }
 
 /// Formatting types for arguments.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum FormatType {
     /// Print the [display] representation of the argument.
     ///
     /// [display]: https://doc.rust-lang.org/stable/std/fmt/trait.Display.html
+    #[default]
     Display,
 
     /// Print the [debug] representation of the argument.
@@ -271,12 +267,6 @@ impl FormatType {
             FormatType::Object => "object",
             FormatType::Literal(s) => s,
         }
-    }
-}
-
-impl Default for FormatType {
-    fn default() -> Self {
-        FormatType::Display
     }
 }
 
@@ -446,17 +436,12 @@ where
 ///
 /// Defaults to `Alignment::Right`.
 #[allow(missing_docs)]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
 pub enum Alignment {
     Left,
     Center,
+    #[default]
     Right,
-}
-
-impl Default for Alignment {
-    fn default() -> Self {
-        Alignment::Right
-    }
 }
 
 /// The value of a formatting parameter, used within [`ArgumentSpec`].
@@ -669,12 +654,12 @@ pub trait Format<'f> {
 
         for spec in iter {
             let spec = spec?;
-            buffer.extend(format[last_match..spec.start()].as_bytes());
+            buffer.extend(&format.as_bytes()[last_match..spec.start()]);
             spec.format_into(&mut buffer, &mut access)?;
             last_match = spec.end();
         }
 
-        buffer.extend(format[last_match..].as_bytes());
+        buffer.extend(&format.as_bytes()[last_match..]);
         Ok(Cow::Owned(unsafe { String::from_utf8_unchecked(buffer) }))
     }
 }

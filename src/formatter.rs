@@ -1,6 +1,7 @@
 use std::fmt;
 use std::io;
 use std::mem::{self, MaybeUninit};
+use std::ptr;
 
 use serde::{Serialize, Serializer};
 #[cfg(feature = "json")]
@@ -25,7 +26,7 @@ impl<'a> FmtProxy<'a> {
         unsafe {
             FmtProxy {
                 data: &*(data as *const T as *const ()),
-                func: std::mem::transmute(func),
+                func: std::mem::transmute::<FormatFn<T>, FormatFn<()>>(func),
             }
         }
     }
@@ -142,7 +143,7 @@ where
     {
         unsafe {
             let mut placeholder = MaybeUninit::uninit();
-            mem::swap(self, &mut *placeholder.as_mut_ptr());
+            ptr::swap(self, placeholder.as_mut_ptr());
             let converted = f(placeholder.assume_init().into_inner());
             mem::forget(mem::replace(self, converted));
         }
@@ -259,9 +260,9 @@ impl<'a, W: io::Write> serde::ser::SerializeSeq for SerializeSeq<'a, W> {
     type Ok = ();
     type Error = FormatError;
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         match self {
             SerializeSeq::Compact(compound) => compound.serialize_element(value),
@@ -290,9 +291,9 @@ impl<'a, W: io::Write> serde::ser::SerializeTuple for SerializeTuple<'a, W> {
     type Ok = ();
     type Error = FormatError;
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         match self {
             SerializeTuple::Compact(compound) => compound.serialize_element(value),
@@ -321,9 +322,9 @@ impl<'a, W: io::Write> serde::ser::SerializeTupleStruct for SerializeTupleStruct
     type Ok = ();
     type Error = FormatError;
 
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         match self {
             SerializeTupleStruct::Compact(compound) => compound.serialize_field(value),
@@ -352,9 +353,9 @@ impl<'a, W: io::Write> serde::ser::SerializeTupleVariant for SerializeTupleVaria
     type Ok = ();
     type Error = FormatError;
 
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         match self {
             SerializeTupleVariant::Compact(compound) => compound.serialize_field(value),
@@ -383,9 +384,9 @@ impl<'a, W: io::Write> serde::ser::SerializeMap for SerializeMap<'a, W> {
     type Ok = ();
     type Error = FormatError;
 
-    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<(), Self::Error>
+    fn serialize_key<T>(&mut self, key: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         match self {
             SerializeMap::Compact(compound) => compound.serialize_key(key),
@@ -394,9 +395,9 @@ impl<'a, W: io::Write> serde::ser::SerializeMap for SerializeMap<'a, W> {
         .map_err(Into::into)
     }
 
-    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         match self {
             SerializeMap::Compact(compound) => compound.serialize_value(value),
@@ -413,14 +414,10 @@ impl<'a, W: io::Write> serde::ser::SerializeMap for SerializeMap<'a, W> {
         .map_err(Into::into)
     }
 
-    fn serialize_entry<K: ?Sized, V: ?Sized>(
-        &mut self,
-        key: &K,
-        value: &V,
-    ) -> Result<(), Self::Error>
+    fn serialize_entry<K, V>(&mut self, key: &K, value: &V) -> Result<(), Self::Error>
     where
-        K: Serialize,
-        V: Serialize,
+        K: ?Sized + Serialize,
+        V: ?Sized + Serialize,
     {
         match self {
             SerializeMap::Compact(compound) => compound.serialize_entry(key, value),
@@ -441,13 +438,9 @@ impl<'a, W: io::Write> serde::ser::SerializeStruct for SerializeStruct<'a, W> {
     type Ok = ();
     type Error = FormatError;
 
-    fn serialize_field<T: ?Sized>(
-        &mut self,
-        key: &'static str,
-        value: &T,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         match self {
             SerializeStruct::Compact(compound) => compound.serialize_field(key, value),
@@ -484,13 +477,9 @@ impl<'a, W: io::Write> serde::ser::SerializeStructVariant for SerializeStructVar
     type Ok = ();
     type Error = FormatError;
 
-    fn serialize_field<T: ?Sized>(
-        &mut self,
-        key: &'static str,
-        value: &T,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         match self {
             SerializeStructVariant::Compact(compound) => compound.serialize_field(key, value),
@@ -706,9 +695,9 @@ where
         self.serialize_unit()
     }
 
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         value.serialize(self)
     }
@@ -734,18 +723,18 @@ where
         self.serialize_str(variant)
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         value.serialize(self)
     }
 
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
         _variant_index: u32,
@@ -753,7 +742,7 @@ where
         _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: ?Sized + Serialize,
     {
         Err(FormatError::Type(self.ty))
     }
