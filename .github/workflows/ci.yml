@@ -15,73 +15,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
+      - uses: actions/checkout@v4
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --tests -- -D clippy::all
+        run: cargo clippy --all-features --tests -- -D clippy::all
 
   all_features:
     name: Tests (all features)
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
+      - uses: actions/checkout@v4
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+      - uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features
+        run: cargo test --all-features
 
   no_features:
     name: Tests (no default features)
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
+      - uses: actions/checkout@v4
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+      - uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-default-features
+        run: cargo test --no-default-features
